@@ -81,11 +81,13 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
             observation = obs[None]
 
         # TODO return the action that the policy prescribes
-        action = self.forward(observation)
+        observation = ptu.from_numpy(observation)
+        
         if self.discrete:
+            action = self.logits_na(observation)
             action = torch.argmax(action, dim=1)
         else:
-            action = action
+            action = self.mean_net(observation)
         return ptu.to_numpy(action)
 
     # update/train this policy
@@ -122,8 +124,12 @@ class MLPPolicySL(MLPPolicy):
             adv_n=None, acs_labels_na=None, qvals=None
     ):
         # TODO: update the policy and return the loss
+        observations = ptu.from_numpy(observations)
+        actions = ptu.from_numpy(actions)
         pred_actions = self.forward(observations)
         loss = self.loss(pred_actions, actions)
+        loss.backward()
+        self.optimizer.step()
         return {
             # You can add extra logging information here, but keep this line
             'Training Loss': ptu.to_numpy(loss),
