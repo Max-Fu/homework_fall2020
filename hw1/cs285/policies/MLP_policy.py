@@ -105,8 +105,6 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
             action = self.logits_na(observation)
         else:
             mean = self.mean_net(observation)
-            # action = mean + torch.exp(self.logstd) * torch.normal(0, 1, self.logstd.shape)
-            # action = torch.normal(mean, torch.exp(self.logstd))
             action = distributions.normal.Normal(mean, torch.exp(self.logstd))
         return action
 
@@ -117,10 +115,10 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
 class MLPPolicySL(MLPPolicy):
     def __init__(self, ac_dim, ob_dim, n_layers, size, **kwargs):
         super().__init__(ac_dim, ob_dim, n_layers, size, **kwargs)
-        # if self.discrete: 
-        #     self.loss = nn.CrossEntropyLoss()
-        # else:
-        self.loss = nn.MSELoss()
+        if self.discrete: 
+            self.loss = nn.CrossEntropyLoss()
+        else:
+            self.loss = nn.MSELoss()
 
     def update(
             self, observations, actions,
@@ -131,7 +129,6 @@ class MLPPolicySL(MLPPolicy):
         observations = ptu.from_numpy(observations)
         actions = ptu.from_numpy(actions)
         pred_actions = self.forward(observations)
-        # loss = self.loss(pred_actions, actions)
         loss = - pred_actions.log_prob(actions).sum()
         loss.backward()
         self.optimizer.step()
