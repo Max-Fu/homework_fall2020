@@ -56,6 +56,7 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
                 input_size=self.ob_dim,
                 output_size=self.ac_dim,
                 n_layers=self.n_layers, size=self.size,
+                activation='leaky_relu'
             )
             self.mean_net.to(ptu.device)
             self.logstd = nn.Parameter(
@@ -104,7 +105,9 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
             action = self.logits_na(observation)
         else:
             mean = self.mean_net(observation)
-            action = torch.normal(mean, torch.exp(self.logstd))
+            action = mean + torch.exp(self.logstd) * torch.normal(0, 1, self.logstd.shape)
+            # action = torch.normal(mean, torch.exp(self.logstd))
+            # action = distributions.normal.Normal(mean, torch.exp(self.logstd)).rsample()
         return action
 
 
@@ -124,6 +127,7 @@ class MLPPolicySL(MLPPolicy):
             adv_n=None, acs_labels_na=None, qvals=None
     ):
         # TODO: update the policy and return the loss
+        self.optimizer.zero_grad()
         observations = ptu.from_numpy(observations)
         actions = ptu.from_numpy(actions)
         pred_actions = self.forward(observations)
