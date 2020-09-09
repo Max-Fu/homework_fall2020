@@ -1,2 +1,5 @@
 *.pyc
 data/
+submit/
+*.csv
+*.png
