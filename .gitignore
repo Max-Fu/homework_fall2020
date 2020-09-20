@@ -3,3 +3,5 @@ data/
 submit/
 *.csv
 *.png
+*/cs285.egg-info/
+*/dist/
