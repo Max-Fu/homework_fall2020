@@ -151,8 +151,8 @@ class MLPPolicyPG(MLPPolicy):
         # HINT3: don't forget that `optimizer.step()` MINIMIZES a loss
         self.optimizer.zero_grad()
         pred_actions = self.forward(observations)
-        loss = - pred_actions.log_prob(actions) * advantages
-        loss = torch.sum(loss)
+        loss = - torch.sum(pred_actions.log_prob(actions), 1) * advantages
+        loss = torch.mean(loss)
         loss.backward()
 
         # TODO: optimize `loss` using `self.optimizer`
@@ -171,11 +171,12 @@ class MLPPolicyPG(MLPPolicy):
             ## avoid any subtle broadcasting bugs that can arise when dealing with arrays of shape
             ## [ N ] versus shape [ N x 1 ]
             ## HINT: you can use `squeeze` on torch tensors to remove dimensions of size 1
+            baseline_predictions = torch.squeeze(baseline_predictions)
             assert baseline_predictions.shape == targets.shape
             
             # TODO: compute the loss that should be optimized for training the baseline MLP (`self.baseline`)
             # HINT: use `F.mse_loss`
-            self.baseline_optimizer.no_grad()
+            self.baseline_optimizer.zero_grad()
             baseline_loss = self.baseline_loss(baseline_predictions, targets)
             baseline_loss.backward()
 

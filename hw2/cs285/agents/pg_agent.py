@@ -119,7 +119,7 @@ class PGAgent(BaseAgent):
     #####################################################
     ################## HELPER FUNCTIONS #################
     #####################################################
-
+    # DIFFERS
     def _discounted_return(self, rewards):
         """
             Helper function
@@ -151,7 +151,7 @@ class PGAgent(BaseAgent):
         list_of_discounted_cumsums = []
         for i in range(len(rewards)):
             sublist = rewards[i:]
-            discounts = np.logspace(i, len(rewards) - 1, num=len(sublist), base=self.gamma)
+            discounts = np.logspace(0, len(rewards) - i - 1, num=len(sublist), base=self.gamma)
             list_of_discounted_cumsums.append(discounts.T @ sublist)
         return np.array(list_of_discounted_cumsums)
 
