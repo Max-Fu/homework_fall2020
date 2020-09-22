@@ -151,7 +151,11 @@ class MLPPolicyPG(MLPPolicy):
         # HINT3: don't forget that `optimizer.step()` MINIMIZES a loss
         self.optimizer.zero_grad()
         pred_actions = self.forward(observations)
-        loss = - torch.sum(pred_actions.log_prob(actions), 1) * advantages
+        log_pi = pred_actions.log_prob(actions)
+        if log_pi.ndim >= 2:
+            loss = - torch.sum(log_pi, 1) * advantages
+        else:
+            loss = - log_pi * advantages
         loss = torch.mean(loss)
         loss.backward()
 
