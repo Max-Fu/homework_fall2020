@@ -95,18 +95,8 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
 
         # TODO return the action that the policy prescribes
         observation = ptu.from_numpy(observation)
-        
-        if self.discrete:
-            # action = self.logits_na(observation)
-            # action = torch.argmax(action, dim=1)
-            prob = self.logits_na(observation)
-            dist = distributions.Categorical(prob)
-            action = dist.sample()
-        else:
-            # action = self.mean_net(observation)
-            mean = self.mean_net(observation)
-            dist = distributions.normal.Normal(mean, torch.exp(self.logstd))
-            action = dist.sample()
+        dist = self.forward(observation)
+        action = dist.sample()
         return ptu.to_numpy(action)
 
     # update/train this policy
@@ -120,12 +110,19 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
     # `torch.distributions.Distribution` object. It's up to you!
     def forward(self, observation: torch.FloatTensor):
         if self.discrete:
-            dist = self.logits_na(observation)
-            action = distributions.Categorical(dist)
+            logits = self.logits_na(observation)
+            action_distribution = distributions.Categorical(logits=logits)
+            return action_distribution
         else:
-            mean = self.mean_net(observation)
-            action = distributions.normal.Normal(mean, torch.exp(self.logstd))
-        return action
+            batch_mean = self.mean_net(observation)
+            scale_tril = torch.diag(torch.exp(self.logstd))
+            batch_dim = batch_mean.shape[0]
+            batch_scale_tril = scale_tril.repeat(batch_dim, 1, 1)
+            action_distribution = distributions.MultivariateNormal(
+                batch_mean,
+                scale_tril=batch_scale_tril,
+            )
+            return action_distribution
 
 
 #####################################################
@@ -149,18 +146,18 @@ class MLPPolicyPG(MLPPolicy):
         # HINT2: you will want to use the `log_prob` method on the distribution returned
             # by the `forward` method
         # HINT3: don't forget that `optimizer.step()` MINIMIZES a loss
-        self.optimizer.zero_grad()
         pred_actions = self.forward(observations)
         log_pi = pred_actions.log_prob(actions)
-        if log_pi.ndim >= 2:
-            loss = - torch.sum(log_pi, 1) * advantages
+        if log_pi.ndim == 2:
+            loss = - torch.mul(torch.sum(log_pi, 1), advantages)
         else:
-            loss = - log_pi * advantages
+            loss = - torch.mul(log_pi, advantages)
         loss = torch.mean(loss)
-        loss.backward()
 
         # TODO: optimize `loss` using `self.optimizer`
         # HINT: remember to `zero_grad` first
+        self.optimizer.zero_grad()
+        loss.backward()
         self.optimizer.step()
 
         if self.nn_baseline:
@@ -180,12 +177,12 @@ class MLPPolicyPG(MLPPolicy):
             
             # TODO: compute the loss that should be optimized for training the baseline MLP (`self.baseline`)
             # HINT: use `F.mse_loss`
-            self.baseline_optimizer.zero_grad()
-            baseline_loss = self.baseline_loss(baseline_predictions, targets)
-            baseline_loss.backward()
+            baseline_loss = F.mse_loss(baseline_predictions, targets)
 
             # TODO: optimize `baseline_loss` using `self.baseline_optimizer`
             # HINT: remember to `zero_grad` first
+            self.baseline_optimizer.zero_grad()
+            baseline_loss.backward()
             self.baseline_optimizer.step()
 
         train_log = {
