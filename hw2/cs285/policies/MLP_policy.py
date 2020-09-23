@@ -42,8 +42,7 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
             self.logits_na = ptu.build_mlp(input_size=self.ob_dim,
                                            output_size=self.ac_dim,
                                            n_layers=self.n_layers,
-                                           size=self.size, 
-                                           output_activation='softmax')
+                                           size=self.size)
             self.logits_na.to(ptu.device)
             self.mean_net = None
             self.logstd = None
