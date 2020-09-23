@@ -149,9 +149,11 @@ class PGAgent(BaseAgent):
         # HINT2: it is possible to write a vectorized solution, but a solution
             # using a for loop is also fine
         list_of_discounted_cumsums = []
+        discount = np.logspace(0, len(rewards) - 1, num=len(rewards), base=self.gamma)
         for i in range(len(rewards)):
             sublist = rewards[i:]
-            discounts = np.logspace(0, len(rewards) - i - 1, num=len(sublist), base=self.gamma)
+            # discounts = np.logspace(0, len(rewards) - i - 1, num=len(sublist), base=self.gamma)
+            discounts = discount[:len(sublist)]
             list_of_discounted_cumsums.append(discounts.T @ sublist)
         return np.array(list_of_discounted_cumsums)
 

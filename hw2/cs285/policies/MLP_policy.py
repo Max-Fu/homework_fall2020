@@ -87,26 +87,36 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
     ##################################
 
     # query the policy with observation(s) to get selected action(s)
+    # def get_action(self, obs: np.ndarray) -> np.ndarray:
+    #     if len(obs.shape) > 1:
+    #         observation = obs
+    #     else:
+    #         observation = obs[None]
+
+    #     # TODO return the action that the policy prescribes
+    #     observation = ptu.from_numpy(observation)
+        
+    #     if self.discrete:
+    #         # action = self.logits_na(observation)
+    #         # action = torch.argmax(action, dim=1)
+    #         prob = self.logits_na(observation)
+    #         dist = distributions.Categorical(prob)
+    #         action = dist.sample()
+    #     else:
+    #         # action = self.mean_net(observation)
+    #         mean = self.mean_net(observation)
+    #         dist = distributions.normal.Normal(mean, torch.exp(self.logstd))
+    #         action = dist.sample()
+    #     return ptu.to_numpy(action)
     def get_action(self, obs: np.ndarray) -> np.ndarray:
         if len(obs.shape) > 1:
             observation = obs
         else:
             observation = obs[None]
 
-        # TODO return the action that the policy prescribes
         observation = ptu.from_numpy(observation)
-        
-        if self.discrete:
-            # action = self.logits_na(observation)
-            # action = torch.argmax(action, dim=1)
-            prob = self.logits_na(observation)
-            dist = distributions.Categorical(prob)
-            action = dist.sample()
-        else:
-            # action = self.mean_net(observation)
-            mean = self.mean_net(observation)
-            dist = distributions.normal.Normal(mean, torch.exp(self.logstd))
-            action = dist.sample()
+        action_distribution = self(observation)
+        action = action_distribution.sample()  # don't bother with rsample
         return ptu.to_numpy(action)
 
     # update/train this policy
@@ -118,14 +128,29 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
     # through it. For example, you can return a torch.FloatTensor. You can also
     # return more flexible objects, such as a
     # `torch.distributions.Distribution` object. It's up to you!
+    # def forward(self, observation: torch.FloatTensor):
+    #     if self.discrete:
+    #         dist = self.logits_na(observation)
+    #         action = distributions.Categorical(dist)
+    #     else:
+    #         mean = self.mean_net(observation)
+    #         action = distributions.normal.Normal(mean, torch.exp(self.logstd))
+    #     return action
     def forward(self, observation: torch.FloatTensor):
         if self.discrete:
-            dist = self.logits_na(observation)
-            action = distributions.Categorical(dist)
+            logits = self.logits_na(observation)
+            action_distribution = distributions.Categorical(logits=logits)
+            return action_distribution
         else:
-            mean = self.mean_net(observation)
-            action = distributions.normal.Normal(mean, torch.exp(self.logstd))
-        return action
+            batch_mean = self.mean_net(observation)
+            scale_tril = torch.diag(torch.exp(self.logstd))
+            batch_dim = batch_mean.shape[0]
+            batch_scale_tril = scale_tril.repeat(batch_dim, 1, 1)
+            action_distribution = distributions.MultivariateNormal(
+                batch_mean,
+                scale_tril=batch_scale_tril,
+            )
+            return action_distribution
 
 
 #####################################################
@@ -150,7 +175,7 @@ class MLPPolicyPG(MLPPolicy):
             # by the `forward` method
         # HINT3: don't forget that `optimizer.step()` MINIMIZES a loss
         self.optimizer.zero_grad()
-        pred_actions = self.forward(observations)
+        pred_actions = self(observations)
         log_pi = pred_actions.log_prob(actions)
         if log_pi.ndim >= 2:
             loss = - torch.sum(log_pi, 1) * advantages
@@ -170,7 +195,7 @@ class MLPPolicyPG(MLPPolicy):
             targets = ptu.from_numpy(targets)
 
             ## TODO: use the `forward` method of `self.baseline` to get baseline predictions
-            baseline_predictions = self.baseline.forward(observations) 
+            baseline_predictions = self.baseline(observations) 
             
             ## avoid any subtle broadcasting bugs that can arise when dealing with arrays of shape
             ## [ N ] versus shape [ N x 1 ]
