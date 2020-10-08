@@ -6,6 +6,7 @@ from cs285.infrastructure.replay_buffer import ReplayBuffer
 from cs285.infrastructure.utils import *
 from cs285.policies.MLP_policy import MLPPolicyAC
 from .base_agent import BaseAgent
+from cs285.infrastructure import pytorch_util as ptu
 
 
 class ACAgent(BaseAgent):
@@ -34,27 +35,35 @@ class ACAgent(BaseAgent):
         # TODO Implement the following pseudocode:
         # for agent_params['num_critic_updates_per_agent_update'] steps,
         #     update the critic
-
+        critic_loss = 0
+        for _ in range(self.agent_params['num_critic_updates_per_agent_update']):
+            critic_loss += self.critic.update(ob_no, ac_na, next_ob_no, re_n, terminal_n)
         # advantage = estimate_advantage(...)
-
+        advantage = self.estimate_advantage(ob_no, next_ob_no, re_n, terminal_n)
         # for agent_params['num_actor_updates_per_agent_update'] steps,
         #     update the actor
-
+        actor_loss = 0
+        for _ in range(self.agent_params['num_actor_updates_per_agent_update']):
+            actor_loss += self.actor.update(ob_no, ac_na, advantage)
         loss = OrderedDict()
-        loss['Critic_Loss'] = TODO
-        loss['Actor_Loss'] = TODO
+        loss['Critic_Loss'] = critic_loss
+        loss['Actor_Loss'] = actor_loss
 
         return loss
 
     def estimate_advantage(self, ob_no, next_ob_no, re_n, terminal_n):
         # TODO Implement the following pseudocode:
         # 1) query the critic with ob_no, to get V(s)
+        v_s = self.critic.forward(ptu.from_numpy(ob_no))
+        v_s = ptu.to_numpy(v_s)
         # 2) query the critic with next_ob_no, to get V(s')
+        v_sp = self.critic.forward(ptu.from_numpy(next_ob_no))
+        v_sp = ptu.to_numpy(v_sp)
         # 3) estimate the Q value as Q(s, a) = r(s, a) + gamma*V(s')
         # HINT: Remember to cut off the V(s') term (ie set it to 0) at terminal states (ie terminal_n=1)
+        q_estimate = re_n + self.gamma * v_sp * (1 - terminal_n)
         # 4) calculate advantage (adv_n) as A(s, a) = Q(s, a) - V(s)
-        adv_n = TODO
-
+        adv_n = q_estimate - v_s
         if self.standardize_advantages:
             adv_n = (adv_n - np.mean(adv_n)) / (np.std(adv_n) + 1e-8)
         return adv_n
