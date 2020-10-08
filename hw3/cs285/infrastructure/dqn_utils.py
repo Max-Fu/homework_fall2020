@@ -99,6 +99,8 @@ class Ipdb(nn.Module):
 
 class PreprocessAtari(nn.Module):
     def forward(self, x):
+        if x.dim() == 3:
+            x = x.unsqueeze(0)
         x = x.permute(0, 3, 1, 2).contiguous()
         return x / 255.
 
