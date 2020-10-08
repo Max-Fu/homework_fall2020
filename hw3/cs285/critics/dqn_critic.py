@@ -73,8 +73,9 @@ class DQNCritic(BaseCritic):
             # In double Q-learning, the best action is selected using the Q-network that
             # is being updated, but the Q-value for this action is obtained from the
             # target Q-network. See page 5 of https://arxiv.org/pdf/1509.06461.pdf for more details.
-            qnet_tp1_values = self.q_net(next_ob_no)
-            q_tp1, _ = qnet_tp1_values.max(dim=1)
+            _, selected_action = self.q_net(next_ob_no).max(1)
+            selected_action = selected_action.unsqueeze(1)
+            q_tp1 = qa_tp1_values.gather(1, selected_action).squeeze()
         else:
             q_tp1, _ = qa_tp1_values.max(dim=1)
 
