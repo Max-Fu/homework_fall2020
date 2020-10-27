@@ -133,7 +133,6 @@ class FFModel(nn.Module, BaseModel):
         # Hint: you should use `data_statistics['delta_mean']` and
         # `data_statistics['delta_std']`, which keep track of the mean
         # and standard deviation of the model.
-        # import pdb; pdb.set_trace()
         loss = self.loss(self.forward(observations, actions, **data_statistics)[0], ptu.from_numpy(next_observations))
         # TODO(Q1) compute the loss
         # Hint: `self(...)` returns a tuple, but you only need to use one of the
