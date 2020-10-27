@@ -179,11 +179,11 @@ class RL_Trainer(object):
 
     def collect_training_trajectories(self, itr, initial_expertdata, collect_policy, num_transitions_to_sample, save_expert_data_to_disk=False):
         if itr == 0:
-        if initial_expertdata is not None:
-            paths = pickle.load(open(self.params['expert_data'], 'rb'))
-            return paths, 0, None
-        if save_expert_data_to_disk:
-            num_transitions_to_sample = self.params['batch_size_initial']
+            if initial_expertdata is not None:
+                paths = pickle.load(open(self.params['expert_data'], 'rb'))
+                return paths, 0, None
+            if save_expert_data_to_disk:
+                num_transitions_to_sample = self.params['batch_size_initial']
 
         # collect data to be used for training
         print("\nCollecting data to be used for training...")

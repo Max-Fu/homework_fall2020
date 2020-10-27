@@ -78,8 +78,11 @@ class FFModel(nn.Module, BaseModel):
                 unnormalized) output of the delta network. This is needed
         """
         # normalize input data to mean 0, std 1
-        obs_normalized = normalize(obs_unnormalized, obs_mean, obs_std)
-        acs_normalized = normalize(acs_unnormalized, acs_mean, acs_std)
+        self.update_statistics(obs_mean, obs_std, acs_mean, acs_std, delta_mean, delta_std)
+        obs_unnormalized = ptu.from_numpy(obs_unnormalized)
+        acs_unnormalized = ptu.from_numpy(acs_unnormalized)
+        obs_normalized = normalize(obs_unnormalized, self.obs_mean, self.obs_std)
+        acs_normalized = normalize(acs_unnormalized, self.acs_mean, self.acs_std)
 
         # predicted change in obs
         concatenated_input = torch.cat([obs_normalized, acs_normalized], dim=1)
@@ -88,7 +91,7 @@ class FFModel(nn.Module, BaseModel):
         # Hint: as described in the PDF, the output of the network is the
         # *normalized change* in state, i.e. normalized(s_t+1 - s_t).
         delta_pred_normalized = self.delta_network(concatenated_input)
-        next_obs_pred = obs_unnormalized + unnormalize(delta_pred_normalized, delta_mean, delta_std)
+        next_obs_pred = obs_unnormalized + unnormalize(delta_pred_normalized, self.delta_mean, self.delta_std)
         return next_obs_pred, delta_pred_normalized
 
     def get_prediction(self, obs, acs, data_statistics):
@@ -125,13 +128,13 @@ class FFModel(nn.Module, BaseModel):
              - 'delta_std'
         :return:
         """
-        target = normalize(next_observations - observations, data_statistics['delta_mean'], data_statistics['delta_std'])
+        target = ptu.from_numpy(normalize(next_observations - observations, data_statistics['delta_mean'], data_statistics['delta_std']))
         # TODO(Q1) compute the normalized target for the model.
         # Hint: you should use `data_statistics['delta_mean']` and
         # `data_statistics['delta_std']`, which keep track of the mean
         # and standard deviation of the model.
-
-        loss = self.loss(self.forward(observations, actions, **data_statistics)[0], next_observations)
+        # import pdb; pdb.set_trace()
+        loss = self.loss(self.forward(observations, actions, **data_statistics)[0], ptu.from_numpy(next_observations))
         # TODO(Q1) compute the loss
         # Hint: `self(...)` returns a tuple, but you only need to use one of the
         # outputs.
