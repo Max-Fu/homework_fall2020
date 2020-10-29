@@ -92,7 +92,7 @@ class MPCPolicy(BasePolicy):
         current_states = np.tile(obs, (self.N, 1))
         for i in range(self.horizon):
             actions = candidate_action_sequences[:,i,:]
-            reward_batch, dones = self.env.get_reward(current_states, actions)
+            reward_batch, _ = self.env.get_reward(current_states, actions)
             sum_of_rewards += reward_batch
             current_states = model.get_prediction(current_states, actions, self.data_statistics)
         return sum_of_rewards
