@@ -86,8 +86,8 @@ class CQLCritic(BaseCritic):
         # CQL Loss
         if self.cql_alpha > 0:
             # TODO: Implement CQL as described in the pdf and paper
-            q_t_logsumexp = torch.log(torch.sum(torch.exp(qa_t_values), dim=1))
-            cql_loss = self.cql_alpha * torch.sum(q_t_logsumexp - q_t_values)
+            q_t_logsumexp = torch.logsumexp(qa_t_values, dim=1)
+            cql_loss = self.cql_alpha * torch.mean(q_t_logsumexp - q_t_values)
             loss = loss + cql_loss
         
         self.optimizer.zero_grad()
